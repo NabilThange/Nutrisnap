@@ -1,0 +1,378 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --radius: 0rem;
+
+    /* NutriSnap Bauhaus Brutalism Color Palette */
+    --electric-lime: 120 100% 50%; /* #00FF00 - Primary CTAs */
+    --deep-black: 0 0% 0%; /* #000000 - Text & emphasis */
+    --pure-white: 0 0% 100%; /* #FFFFFF - Background */
+    --concrete-gray: 0 0% 75%; /* #BFBFBF - Secondary text */
+    --warning-orange: 24 100% 50%; /* #FF6600 - Alerts */
+    --electric-blue: 210 100% 50%; /* #0080FF - Interactive */
+    --blood-red: 0 100% 50%; /* #FF0000 - Errors */
+    --industrial-yellow: 60 100% 50%; /* #FFFF00 - Highlights */
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
+      "Droid Sans", "Helvetica Neue", sans-serif;
+    font-weight: 500;
+  }
+}
+
+/* NutriSnap Brutalist Styles */
+.nutrisnap-bg {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 25%, #e8e8e8 50%, #bfbfbf 75%, #ffffff 100%);
+}
+
+.hero-brutalist-bg {
+  background: linear-gradient(45deg, #ffffff 0%, #f0f0f0 50%, #e0e0e0 100%);
+}
+
+.dashboard-simple-bg {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+}
+
+.nutrisnap-concrete {
+  background: radial-gradient(circle at 20% 80%, rgba(0, 255, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0, 128, 255, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #f8f8f8 0%, #e8e8e8 100%);
+}
+
+.nutrisnap-shadow {
+  box-shadow: 8px 8px 0px 0px hsl(var(--deep-black));
+}
+
+.nutrisnap-shadow-sm {
+  box-shadow: 4px 4px 0px 0px hsl(var(--deep-black));
+}
+
+.nutrisnap-shadow-lg {
+  box-shadow: 12px 12px 0px 0px hsl(var(--deep-black));
+}
+
+.nutrisnap-border {
+  border: 4px solid hsl(var(--deep-black));
+}
+
+.nutrisnap-border-thin {
+  border: 2px solid hsl(var(--deep-black));
+}
+
+/* Mobile-First Responsive Design */
+.nutrisnap-hover {
+  transition: all 0.15s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (hover: hover) {
+  .nutrisnap-hover:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 11px 11px 0px 0px hsl(var(--deep-black));
+  }
+}
+
+.nutrisnap-press:active {
+  transform: translate(4px, 4px);
+  box-shadow: 4px 4px 0px 0px hsl(var(--deep-black));
+}
+
+/* Hero Animations */
+@keyframes nutrisnap-float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-15px) rotate(-2deg);
+  }
+}
+
+@keyframes nutrisnap-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px hsl(var(--electric-lime)), 8px 8px 0px hsl(var(--deep-black));
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(var(--electric-lime)), 8px 8px 0px hsl(var(--deep-black));
+  }
+}
+
+@keyframes nutrisnap-slide-in {
+  0% {
+    transform: translateX(-100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes nutrisnap-bounce-in {
+  0% {
+    transform: scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05) rotate(5deg);
+  }
+  70% {
+    transform: scale(0.9) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* NEW: Muscle Flex Animation */
+@keyframes nutrisnap-muscle-flex {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+  }
+  75% {
+    transform: scale(1.1) rotate(5deg);
+  }
+}
+
+.nutrisnap-float {
+  animation: nutrisnap-float 6s ease-in-out infinite;
+}
+.nutrisnap-pulse-glow {
+  animation: nutrisnap-pulse-glow 3s ease-in-out infinite;
+}
+.nutrisnap-slide-in {
+  animation: nutrisnap-slide-in 0.8s ease-out;
+}
+.nutrisnap-bounce-in {
+  animation: nutrisnap-bounce-in 1s ease-out;
+}
+
+/* NEW: Muscle Flex Animation Class */
+.nutrisnap-muscle-flex {
+  animation: nutrisnap-muscle-flex 1.5s ease-in-out infinite;
+}
+
+/* Loading Animation */
+@keyframes nutrisnap-loading {
+  0% {
+    transform: rotate(0deg) scale(1);
+    background-color: hsl(var(--electric-lime));
+  }
+  25% {
+    transform: rotate(90deg) scale(1.1);
+    background-color: hsl(var(--industrial-yellow));
+  }
+  50% {
+    transform: rotate(180deg) scale(1);
+    background-color: hsl(var(--electric-blue));
+  }
+  75% {
+    transform: rotate(270deg) scale(1.1);
+    background-color: hsl(var(--warning-orange));
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    background-color: hsl(var(--electric-lime));
+  }
+}
+
+.nutrisnap-loading {
+  animation: nutrisnap-loading 2s linear infinite;
+}
+
+/* Typography - Mobile Responsive */
+.nutrisnap-title {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.85;
+}
+
+.nutrisnap-subtitle {
+  font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.nutrisnap-body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Mobile-First Grid System */
+.nutrisnap-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.nutrisnap-grid-2 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.nutrisnap-grid-3 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.nutrisnap-grid-5 {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* Tablet and Desktop Breakpoints */
+@media (min-width: 640px) {
+  .nutrisnap-grid {
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  .nutrisnap-grid-2 {
+    gap: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .nutrisnap-grid-3 {
+    gap: 1.5rem;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Progress Bar */
+.nutrisnap-progress {
+  background: hsl(var(--concrete-gray));
+  border: 3px solid hsl(var(--deep-black));
+  height: 24px;
+  overflow: hidden;
+}
+
+.nutrisnap-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--electric-lime)) 0%,
+    hsl(var(--industrial-yellow)) 25%,
+    hsl(var(--warning-orange)) 50%,
+    hsl(var(--electric-blue)) 100%
+  );
+  transition: width 0.4s cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Macro Colors */
+.macro-calories {
+  background-color: hsl(var(--deep-black));
+  color: hsl(var(--pure-white));
+}
+.macro-protein {
+  background-color: hsl(var(--electric-blue));
+  color: hsl(var(--pure-white));
+}
+.macro-carbs {
+  background-color: hsl(var(--industrial-yellow));
+  color: hsl(var(--deep-black));
+}
+.macro-fat {
+  background-color: hsl(var(--warning-orange));
+  color: hsl(var(--pure-white));
+}
+
+/* Mobile Touch Targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Mobile Spacing */
+.mobile-padding {
+  padding: 1rem;
+}
+.mobile-margin {
+  margin: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-padding {
+    padding: 1.5rem;
+  }
+  .mobile-margin {
+    margin: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-padding {
+    padding: 2rem;
+  }
+  .mobile-margin {
+    margin: 1.5rem;
+  }
+}
+
+/* Confidence States */
+.confidence-high {
+  border-color: hsl(var(--electric-lime)) !important;
+}
+.confidence-medium {
+  border-color: hsl(var(--warning-orange)) !important;
+}
+.confidence-low {
+  border-color: hsl(var(--blood-red)) !important;
+}
