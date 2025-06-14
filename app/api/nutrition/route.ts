@@ -38,5 +38,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const nutritionData = mockNutritionData(food, quantity);
+    return NextResponse.json(nutritionData);
+
+  } catch (error) {
+    console.error("Error in nutrition API route:", error);
+    return NextResponse.json({ error: "Failed to fetch nutrition data." }, { status: 500 });
+  }
+}
+
 // In a real implementation, this would call Edamam API
 // const response = await fetch(`https://api.edamam
