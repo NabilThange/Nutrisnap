@@ -35,6 +35,7 @@ export default function BrutalistCapturePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const currentStreamRef = useRef<MediaStream | null>(null);
 
   const handleToggleFlash = useCallback(async () => {
     if (mediaStream) {
@@ -76,10 +77,14 @@ export default function BrutalistCapturePage() {
 
   useEffect(() => {
     const enableStream = async () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
+      // Stop any previously active stream from this effect
+      if (currentStreamRef.current) {
+        console.log("Stopping previous stream tracks...");
+        currentStreamRef.current.getTracks().forEach(track => track.stop());
+        currentStreamRef.current = null;
       }
-      setMediaStream(null);
+
+      setMediaStream(null); // Clear state
       setCameraError(null);
       setIsLoadingCamera(true);
 
@@ -88,10 +93,31 @@ export default function BrutalistCapturePage() {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: facingMode },
         });
-        setMediaStream(stream);
+        currentStreamRef.current = stream; // Store the new stream in the ref
+        setMediaStream(stream); // Update state
+        console.log("Newly acquired MediaStream:", stream);
+        stream.getTracks().forEach(track => {
+          console.log(`Track ID: ${track.id}, Kind: ${track.kind}, ReadyState: ${track.readyState}, Enabled: ${track.enabled}`);
+        });
+
         if (videoRef.current) {
+          console.log("videoRef.current is available.", videoRef.current);
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
+          // Attempt to play the video and handle the returned Promise
+          const playPromise = videoRef.current.play();
+
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log("Camera stream successfully set and playing on video element.");
+              console.log("Video element paused:", videoRef.current?.paused, "readyState:", videoRef.current?.readyState);
+            }).catch((playError) => {
+              console.error("Error playing video stream:", playError);
+              setCameraError("Failed to play camera stream. Please ensure nothing else is using the camera or try refreshing.");
+            });
+          } else {
+            console.log("videoRef.current.play() returned undefined, assuming it's playing or not requiring a promise.");
+            console.log("Video element paused:", videoRef.current?.paused, "readyState:", videoRef.current?.readyState);
+          }
         }
         setCameraError(null);
       } catch (err) {
@@ -113,9 +139,14 @@ export default function BrutalistCapturePage() {
     }
 
     return () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        setMediaStream(null);
+      // Cleanup function: stop the stream that *this* effect's current run created
+      if (currentStreamRef.current) {
+        console.log("Stopping stream in useEffect cleanup.");
+        currentStreamRef.current.getTracks().forEach(track => track.stop());
+        currentStreamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null; // Clear the video element
       }
     };
   }, [capturedImage, facingMode]);
@@ -224,7 +255,17 @@ export default function BrutalistCapturePage() {
             {/* Camera Viewfinder */}
             <BrutalistCard className="bg-gray-900 border-white/20">
               <BrutalistCardContent className="p-0">
-                <div className="aspect-square bg-gradient-to-br from-gray-800 to-gray-900 brutalist-border border-white/20 flex items-center justify-center relative overflow-hidden">
+                <div className="aspect-square bg-transparent brutalist-border border-white/20 flex items-center justify-center relative overflow-hidden">
+                  {/* Video Element - Always mounted when no image captured */}
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`w-full h-full object-cover z-10 border-4 border-red-500 ${ (isCapturing || cameraError || isLoadingCamera || videoDevices.length === 0) ? 'hidden' : ''}`}
+                  ></video>
+
+                  {/* Overlays for different states */}
                   {isCapturing ? (
                     <BrutalistLoading size="lg" text="CAPTURING FOOD..." />
                   ) : cameraError ? (
@@ -239,13 +280,11 @@ export default function BrutalistCapturePage() {
                       <p className="brutalist-title text-xl mb-2">NO CAMERA DETECTED</p>
                       <p className="brutalist-body text-sm px-4">Please ensure a camera is connected and permissions are granted.</p>
                     </div>
-                  ) : (
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"></video>
-                  )}
+                  ) : null /* No overlay when camera is active and ready */}
 
                   {/* Camera Guidelines */}
                   {!cameraError && !isCapturing && videoDevices.length > 0 && (
-                    <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 pointer-events-none z-20">
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-4 border-white/30"></div>
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-red-500 brutalist-border border-white"></div>
                     </div>
@@ -261,7 +300,7 @@ export default function BrutalistCapturePage() {
                 size="lg"
                 onClick={handleFileUpload}
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-16 h-16 p-0"
-                disabled={isCapturing || !!cameraError || isLoadingCamera}
+                disabled={isCapturing || !!cameraError}
               >
                 <Upload className="w-6 h-6" />
               </BrutalistButton>
@@ -269,20 +308,20 @@ export default function BrutalistCapturePage() {
               <BrutalistButton
                 size="xl"
                 onClick={handleCameraCapture}
-                disabled={isCapturing || !mediaStream || !!cameraError || isLoadingCamera}
+                disabled={isCapturing || !mediaStream || !!cameraError}
                 variant="accent"
                 className="w-24 h-24 p-0 brutalist-shadow-lg"
               >
                 <Camera className="w-10 h-10" />
               </BrutalistButton>
 
-              {videoDevices.length > 1 && ( // Only show camera flip if more than one camera is detected
+              {videoDevices.length > 1 && (
                 <BrutalistButton
                   variant="outline"
                   size="lg"
                   onClick={handleToggleCamera}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-16 h-16 p-0"
-                  disabled={isCapturing || !!cameraError || isLoadingCamera}
+                  disabled={isCapturing || !!cameraError}
                 >
                   <RotateCcw className="w-6 h-6" />
                 </BrutalistButton>
