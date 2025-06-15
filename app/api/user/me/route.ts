@@ -22,8 +22,8 @@ export async function GET(req: Request) {
     }
 
     const userProfile = {
-      firstName: profileData?.first_name || '',
-      lastName: profileData?.last_name || '',
+      firstName: profileData?.first_name || user.user_metadata.firstName || '',
+      lastName: profileData?.last_name || user.user_metadata.lastName || '',
       email: user.email,
       age: profileData?.age || 0,
       height: profileData?.height || 0,

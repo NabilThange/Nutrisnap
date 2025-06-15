@@ -15,10 +15,16 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Sign up the user
+    // Sign up the user with additional metadata
     const { data, error } = await supabaseAdmin.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          firstName,
+          lastName
+        }
+      }
     });
 
     if (error) {
