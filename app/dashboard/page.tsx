@@ -51,6 +51,36 @@ export default function NutriSnapDashboardPage() {
           fat: { ...prevStats.fat, target: nutritionData.fat },
         }));
       }
+
+      // Load and sum logged food nutrition
+      const storedLoggedNutrition = localStorage.getItem('loggedFoodNutrition');
+      if (storedLoggedNutrition) {
+        try {
+          const loggedFoods = JSON.parse(storedLoggedNutrition);
+          let totalCalories = 0;
+          let totalProtein = 0;
+          let totalCarbs = 0;
+          let totalFat = 0;
+
+          loggedFoods.forEach((food: any) => {
+            totalCalories += food.calories || 0;
+            totalProtein += food.protein || 0;
+            totalCarbs += food.carbs || 0;
+            totalFat += food.fat || 0;
+          });
+
+          setTodayStats(prevStats => ({
+            ...prevStats,
+            calories: { ...prevStats.calories, consumed: totalCalories },
+            protein: { ...prevStats.protein, consumed: totalProtein },
+            carbs: { ...prevStats.carbs, consumed: totalCarbs },
+            fat: { ...prevStats.fat, consumed: totalFat },
+          }));
+        } catch (e) {
+          console.error("Error parsing logged food nutrition from localStorage:", e);
+        }
+      }
+
       const savedCuisines = localStorage.getItem('userOnboardingData');
       if (savedCuisines) {
         const onboardingData = JSON.parse(savedCuisines);

@@ -169,6 +169,7 @@ export default function BrutalistCapturePage() {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageBase64 = canvas.toDataURL('image/jpeg');
         setCapturedImage(imageBase64);
+        localStorage.setItem("capturedImage", imageBase64);
         setAnalysisResult(null);
         setIsCapturing(false);
 
@@ -215,7 +216,12 @@ export default function BrutalistCapturePage() {
       setAnalysisResult(null);
       const result = await analyzeImageWithVisionAI(capturedImage);
       setAnalysisResult(result);
+      if (result) {
+        localStorage.setItem("qwenAnalysisResult", result);
+      }
       setIsAnalyzing(false);
+      // Redirect to /recognize page after analysis
+      window.location.href = "/recognize";
     }
   }, [capturedImage])
 
