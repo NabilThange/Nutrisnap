@@ -11,6 +11,8 @@ import { BrutalistLoading } from "@/components/brutalist-loading"
 import { UserPlus } from "lucide-react"
 
 export default function SignUpPage() {
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -35,7 +37,7 @@ export default function SignUpPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ firstName, lastName, email, password }),
       })
 
       const data = await res.json()
@@ -46,6 +48,8 @@ export default function SignUpPage() {
       }
 
       setSuccessMessage(data.message || "Signup successful! Please check your email for confirmation.")
+      setFirstName("")
+      setLastName("")
       setEmail("")
       setPassword("")
       setConfirmPassword("")
@@ -81,7 +85,31 @@ export default function SignUpPage() {
         <BrutalistCardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="nutrisnap-subtitle text-xs">EMAIL</Label>
+              <Label htmlFor="firstName" className="nutrisnap-subtitle text-xs">FIRST NAME</Label>
+              <BrutalistInput
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="touch-target"
+                placeholder="NABIL"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName" className="nutrisnap-subtitle text-xs">LAST NAME</Label>
+              <BrutalistInput
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="touch-target"
+                placeholder="THANGE"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="nutrisnap-subtitle text-xs">EMAIL ADDRESS</Label>
               <BrutalistInput
                 id="email"
                 type="email"
@@ -89,6 +117,7 @@ export default function SignUpPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="touch-target"
+                placeholder="NABIL@EXAMPLE.COM"
               />
             </div>
             <div className="space-y-2">
@@ -100,6 +129,7 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="touch-target"
+                placeholder="CREATE STRONG PASSWORD"
               />
             </div>
             <div className="space-y-2">
@@ -111,6 +141,7 @@ export default function SignUpPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="touch-target"
+                placeholder="PASSWORD."
               />
             </div>
 

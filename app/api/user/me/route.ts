@@ -9,20 +9,27 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Not authenticated or user not found' }, { status: 401 });
     }
 
-    // You can fetch additional profile data from your Supabase database here
-    // For now, we'll return basic user info from the auth session
+    // Fetch additional profile data from the 'profiles' table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, age, height, weight, activity_level, goal')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is 'No rows found'
+      console.error('Error fetching profile data:', profileError);
+      return NextResponse.json({ error: profileError.message || 'Failed to fetch profile data.' }, { status: 500 });
+    }
+
     const userProfile = {
-      firstName: user.user_metadata?.first_name || '', // Assuming you store these in user_metadata
-      lastName: user.user_metadata?.last_name || '',
+      firstName: profileData?.first_name || '',
+      lastName: profileData?.last_name || '',
       email: user.email,
-      // You might need to fetch other profile details from a 'profiles' table
-      // e.g., age, height, weight, activityLevel, goal
-      // For now, these will remain empty or default
-      age: user.user_metadata?.age || 0,
-      height: user.user_metadata?.height || 0,
-      weight: user.user_metadata?.weight || 0,
-      activityLevel: user.user_metadata?.activity_level || 'sedentary',
-      goal: user.user_metadata?.goal || 'maintain-weight',
+      age: profileData?.age || 0,
+      height: profileData?.height || 0,
+      weight: profileData?.weight || 0,
+      activityLevel: profileData?.activity_level || 'sedentary',
+      goal: profileData?.goal || 'maintain-weight',
     };
 
     return NextResponse.json(userProfile);
