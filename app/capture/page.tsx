@@ -12,6 +12,9 @@ import {
   FlashlightOffIcon as FlashOff,
   FlashlightIcon as Flash,
   Square,
+  Zap,
+  Brain,
+  Plus,
 } from "lucide-react"
 import Link from "next/link"
 import { BrutalistBottomNavigation } from "@/components/brutalist-bottom-nav"
@@ -32,6 +35,25 @@ export default function BrutalistCapturePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleToggleFlash = useCallback(async () => {
+    if (mediaStream) {
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      if (videoTrack) {
+        try {
+          const capabilities = videoTrack.getCapabilities();
+          if ('torch' in capabilities) {
+            await videoTrack.applyConstraints({ advanced: [{ torch: !flashEnabled } as any] }); // Explicitly cast to any for torch property
+            setFlashEnabled(prev => !prev);
+          } else {
+            console.warn("Torch (flashlight) not supported by this camera.");
+          }
+        } catch (err) {
+          console.error("Error toggling flashlight:", err);
+        }
+      }
+    }
+  }, [mediaStream, flashEnabled]);
 
   useEffect(() => {
     const enumerateCameras = async () => {
@@ -153,8 +175,7 @@ export default function BrutalistCapturePage() {
     setAnalysisResult(null);
     setCameraError(null);
     setIsLoadingCamera(true);
-    setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
-    setTimeout(() => setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user'), 0);
+    setFacingMode('user'); // Reset to user-facing camera on retake
   }, [])
 
   const handleAnalyze = useCallback(async () => {
@@ -166,6 +187,12 @@ export default function BrutalistCapturePage() {
       setIsAnalyzing(false);
     }
   }, [capturedImage])
+
+  useEffect(() => {
+    if (capturedImage) {
+      handleAnalyze();
+    }
+  }, [capturedImage, handleAnalyze]);
 
   return (
     <div className="min-h-screen bg-black pb-20">
@@ -183,7 +210,7 @@ export default function BrutalistCapturePage() {
               variant="ghost"
               size="sm"
               className="text-white border-white/20 hover:bg-white/10"
-              onClick={() => setFlashEnabled(!flashEnabled)}
+              onClick={handleToggleFlash}
             >
               {flashEnabled ? <Flash className="w-5 h-5" /> : <FlashOff className="w-5 h-5" />}
             </BrutalistButton>
@@ -249,84 +276,86 @@ export default function BrutalistCapturePage() {
                 <Camera className="w-10 h-10" />
               </BrutalistButton>
 
-              <BrutalistButton
-                variant="outline"
-                size="lg"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-16 h-16 p-0"
-                onClick={handleToggleCamera}
-                disabled={isCapturing || !!cameraError || videoDevices.length <= 1 || isLoadingCamera}
-              >
-                <RotateCcw className="w-6 h-6" />
-              </BrutalistButton>
+              {videoDevices.length > 1 && ( // Only show camera flip if more than one camera is detected
+                <BrutalistButton
+                  variant="outline"
+                  size="lg"
+                  onClick={handleToggleCamera}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-16 h-16 p-0"
+                  disabled={isCapturing || !!cameraError || isLoadingCamera}
+                >
+                  <RotateCcw className="w-6 h-6" />
+                </BrutalistButton>
+              )}
             </div>
 
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
             <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
-
-            {/* Tips */}
-            <BrutalistCard className="bg-white/5 border-white/10">
-              <BrutalistCardContent className="p-6">
-                <h3 className="brutalist-subtitle text-white mb-4">CAPTURE TIPS:</h3>
-                <ul className="text-gray-300 brutalist-body space-y-2">
-                  <li>• ENSURE GOOD LIGHTING</li>
-                  <li>• CENTER FOOD IN FRAME</li>
-                  <li>• AVOID SHADOWS</li>
-                  <li>• CAPTURE ENTIRE MEAL</li>
-                </ul>
-              </BrutalistCardContent>
-            </BrutalistCard>
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Captured Image Display */}
             <BrutalistCard className="bg-gray-900 border-white/20">
               <BrutalistCardContent className="p-0">
-                <div className="aspect-square overflow-hidden">
+                <div className="aspect-square brutalist-border border-white/20 flex items-center justify-center relative overflow-hidden">
                   <img src={capturedImage} alt="Captured Food" className="w-full h-full object-cover" />
                 </div>
               </BrutalistCardContent>
             </BrutalistCard>
 
-            {/* Action Buttons */}
-            <div className="flex space-x-4">
+            {/* Image Action Buttons */}
+            <div className="flex justify-center items-center space-x-8">
               <BrutalistButton
                 variant="outline"
+                size="lg"
                 onClick={handleRetake}
-                className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                disabled={isAnalyzing}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-16 h-16 p-0"
               >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                RETAKE
+                <RotateCcw className="w-6 h-6" />
               </BrutalistButton>
 
-              <BrutalistButton onClick={handleAnalyze} variant="accent" className="flex-1" disabled={isAnalyzing}>
-                {isAnalyzing ? "ANALYZING..." : "ANALYZE FOOD"}
+              <BrutalistButton
+                size="xl"
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+                variant="accent"
+                className="w-24 h-24 p-0 brutalist-shadow-lg"
+              >
+                {isAnalyzing ? (
+                  <span className="animate-pulse">
+                    <Zap className="w-10 h-10" />
+                  </span>
+                ) : (
+                  <Brain className="w-10 h-10" />
+                )}
+              </BrutalistButton>
+
+              <BrutalistButton
+                variant="outline"
+                size="lg"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-16 h-16 p-0"
+              >
+                <Plus className="w-6 h-6" />
               </BrutalistButton>
             </div>
 
             {analysisResult && (
-              <BrutalistCard className="bg-green-900/20 border-green-500/20">
-                <BrutalistCardContent className="p-6 text-center">
-                  <h3 className="brutalist-subtitle text-green-400 mb-2">ANALYSIS RESULT:</h3>
-                  <p className="brutalist-body text-green-400">
-                    {analysisResult}
-                  </p>
-                </BrutalistCardContent>
-              </BrutalistCard>
-            )}
-
-            {!analysisResult && !isAnalyzing && (
-              <BrutalistCard className="bg-green-900/20 border-green-500/20">
-                <BrutalistCardContent className="p-6 text-center">
-                  <p className="brutalist-body text-green-400">
-                    GREAT SHOT! AI WILL ANALYZE THIS IMAGE FOR NUTRITION DATA.
-                  </p>
-                </BrutalistCardContent>
-              </BrutalistCard>
+              <div className="mt-6 space-y-4 brutalist-fade-in">
+                <h2 className="brutalist-title text-xl text-white">AI ANALYSIS:</h2>
+                <BrutalistCard className="bg-gray-800 border-white/20 text-white">
+                  <BrutalistCardContent className="p-4 sm:p-6 brutalist-body text-sm">{analysisResult}</BrutalistCardContent>
+                </BrutalistCard>
+              </div>
             )}
           </div>
         )}
       </div>
-
       <BrutalistBottomNavigation />
     </div>
   )
