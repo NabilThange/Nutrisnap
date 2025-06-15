@@ -1,154 +1,123 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
-import { BrutalistButton } from "@/components/ui/brutalist-button"
-import { BrutalistInput } from "@/components/ui/brutalist-input"
-import { Label } from "@/components/ui/label"
-import {
-  BrutalistCard,
-  BrutalistCardContent,
-  BrutalistCardDescription,
-  BrutalistCardHeader,
-  BrutalistCardTitle,
-} from "@/components/ui/brutalist-card"
-import { Eye, EyeOff, Square, ArrowRight } from "lucide-react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { BrutalistCard, BrutalistCardContent, BrutalistCardHeader, BrutalistCardTitle, BrutalistCardDescription } from "@/components/ui/brutalist-card"
+import { BrutalistInput } from "@/components/ui/brutalist-input"
+import { BrutalistButton } from "@/components/ui/brutalist-button"
+import { Label } from "@/components/ui/label"
+import { BrutalistLoading } from "@/components/brutalist-loading"
+import { LogIn } from "lucide-react"
 
-export default function NutriSnapLoginPage() {
+export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || "Login failed.")
+        return
+      }
+
+      // Redirect to the profile page or dashboard on successful login
+      router.push("/profile")
+
+    } catch (err: any) {
+      console.error("Frontend login error:", err)
+      setError(err.message || "An unexpected error occurred during login.")
+    } finally {
       setIsLoading(false)
-      window.location.href = "/dashboard"
-    }, 1500)
+    }
   }
 
   return (
-    <div className="min-h-screen nutrisnap-bg flex items-center justify-center mobile-padding py-8">
-      <BrutalistCard className="w-full max-w-md nutrisnap-shadow-lg">
-        <BrutalistCardHeader className="text-center mobile-padding">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-lime-400 nutrisnap-border flex items-center justify-center">
-              <Square className="w-5 h-5 sm:w-6 sm:h-6 text-black fill-black" />
+    <div className="min-h-screen brutalist-bg flex items-center justify-center p-4">
+      <BrutalistCard className="w-full max-w-md brutalist-shadow">
+        <BrutalistCardHeader>
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-lime-400 nutrisnap-border flex items-center justify-center">
+              <LogIn className="w-6 h-6 text-black" />
             </div>
-            <span className="nutrisnap-title text-xl sm:text-2xl">NUTRISNAP</span>
+            <div>
+              <BrutalistCardTitle className="text-2xl sm:text-3xl">LOG IN</BrutalistCardTitle>
+              <BrutalistCardDescription className="nutrisnap-subtitle text-xs">
+                ACCESS YOUR NUTRISNAP ACCOUNT
+              </BrutalistCardDescription>
+            </div>
           </div>
-          <BrutalistCardTitle className="text-2xl sm:text-3xl mb-2">WELCOME BACK</BrutalistCardTitle>
-          <BrutalistCardDescription className="nutrisnap-subtitle text-xs sm:text-sm">
-            SIGN IN TO CONTINUE YOUR NUTRITION JOURNEY
-          </BrutalistCardDescription>
         </BrutalistCardHeader>
-
-        <BrutalistCardContent className="mobile-padding">
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            <div className="space-y-2 sm:space-y-3">
-              <Label htmlFor="email" className="nutrisnap-subtitle text-xs">
-                EMAIL ADDRESS
-              </Label>
+        <BrutalistCardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="nutrisnap-subtitle text-xs">EMAIL</Label>
               <BrutalistInput
                 id="email"
                 type="email"
-                placeholder="ENTER YOUR EMAIL"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="nutrisnap-hover touch-target"
+                className="touch-target"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="nutrisnap-subtitle text-xs">PASSWORD</Label>
+              <BrutalistInput
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="touch-target"
               />
             </div>
 
-            <div className="space-y-2 sm:space-y-3">
-              <Label htmlFor="password" className="nutrisnap-subtitle text-xs">
-                PASSWORD
-              </Label>
-              <div className="relative">
-                <BrutalistInput
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="ENTER YOUR PASSWORD"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="nutrisnap-hover pr-12 touch-target"
-                />
-                <BrutalistButton
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 touch-target"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-600" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-600" />
-                  )}
-                </BrutalistButton>
-              </div>
-            </div>
+            {error && (
+              <p className="text-red-500 nutrisnap-subtitle text-xs border border-red-500 p-2 brutalist-shadow-sm">ERROR: {error}</p>
+            )}
 
-            <div className="flex items-center justify-between">
-              <Link
-                href="/auth/forgot-password"
-                className="nutrisnap-subtitle text-xs text-blue-500 hover:text-blue-600 transition-colors touch-target"
-              >
-                FORGOT PASSWORD?
-              </Link>
-            </div>
-
-            <BrutalistButton
-              type="submit"
-              className="w-full bg-lime-400 text-black hover:bg-lime-300 nutrisnap-shadow touch-target"
-              disabled={isLoading}
-              size="lg"
-            >
+            <BrutalistButton type="submit" className="w-full bg-lime-400 text-black hover:bg-lime-300 nutrisnap-shadow touch-target" disabled={isLoading}>
               {isLoading ? (
-                <div className="flex items-center">
-                  <div className="w-5 h-5 bg-black nutrisnap-loading mr-2"></div>
-                  SIGNING IN...
-                </div>
+                <BrutalistLoading size="sm" text="LOGGING IN..." />
               ) : (
-                <>
-                  SIGN IN
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
+                "LOG IN"
               )}
             </BrutalistButton>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t-2 border-black" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-4 nutrisnap-subtitle text-gray-500">OR CONTINUE WITH</span>
-              </div>
-            </div>
-
-            <BrutalistButton
-              variant="outline"
-              type="button"
-              className="w-full border-black text-black hover:bg-black hover:text-white touch-target"
-              size="lg"
-            >
-              <div className="w-5 h-5 mr-3 bg-gradient-to-r from-blue-500 to-red-500 nutrisnap-border"></div>
-              GOOGLE
-            </BrutalistButton>
           </form>
-
-          <div className="mt-6 sm:mt-8 text-center">
-            <span className="nutrisnap-body text-sm text-gray-600">DON'T HAVE AN ACCOUNT? </span>
-            <Link
-              href="/auth/signup"
-              className="nutrisnap-subtitle text-sm text-lime-500 hover:text-lime-600 transition-colors touch-target"
-            >
-              SIGN UP
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t-2 border-black" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-4 nutrisnap-subtitle text-gray-500">OR</span>
+            </div>
+          </div>
+          <BrutalistButton
+            onClick={() => router.push('/onboarding')}
+            className="w-full bg-gray-300 text-black hover:bg-gray-200 nutrisnap-shadow touch-target"
+          >
+            CONTINUE WITHOUT SIGN IN
+          </BrutalistButton>
+          <div className="text-center nutrisnap-subtitle text-xs text-gray-600">
+            Don't have an account?{" "}
+            <Link href="/auth/signup" className="text-blue-600 hover:underline">
+              SIGN UP HERE
             </Link>
           </div>
         </BrutalistCardContent>

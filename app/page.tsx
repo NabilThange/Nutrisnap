@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/brutalist-card"
 import { BrutalistBadge } from "@/components/ui/brutalist-badge"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function NutriSnapLandingPage() {
   const [isCapturing, setIsCapturing] = useState(false)
@@ -49,8 +50,8 @@ export default function NutriSnapLandingPage() {
         <div className="container mx-auto mobile-padding py-3 sm:py-6">
           <div className="flex justify-between items-center">
             <div className={`flex items-center space-x-2 sm:space-x-4 ${heroLoaded ? "nutrisnap-slide-in" : ""}`}>
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-black flex items-center justify-center nutrisnap-border">
-                <Square className="w-4 h-4 sm:w-6 sm:h-6 text-lime-400 fill-lime-400" />
+              <div className="w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center nutrisnap-border">
+                <Image src="/nutri.png" alt="NutriSnap Logo" width={51} height={51} className="object-contain" />
               </div>
               <span className="nutrisnap-title text-xl sm:text-3xl">NUTRISNAP</span>
             </div>

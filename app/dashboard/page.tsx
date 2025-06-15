@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BrutalistButton } from "@/components/ui/brutalist-button"
 import {
   BrutalistCard,
@@ -29,12 +29,38 @@ import Link from "next/link"
 import { BrutalistBottomNavigation } from "@/components/brutalist-bottom-nav"
 
 export default function NutriSnapDashboardPage() {
-  const [todayStats] = useState({
-    calories: { consumed: 1420, target: 2150 },
-    protein: { consumed: 85, target: 120 },
-    carbs: { consumed: 180, target: 270 },
-    fat: { consumed: 45, target: 72 },
+  const [todayStats, setTodayStats] = useState({
+    calories: { consumed: 0, target: 2150 },
+    protein: { consumed: 0, target: 120 },
+    carbs: { consumed: 0, target: 270 },
+    fat: { consumed: 0, target: 72 },
   })
+
+  const [preferredCuisines, setPreferredCuisines] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedNutrition = localStorage.getItem('userNutritionData');
+      if (savedNutrition) {
+        const nutritionData = JSON.parse(savedNutrition);
+        setTodayStats(prevStats => ({
+          ...prevStats,
+          calories: { ...prevStats.calories, target: nutritionData.calories },
+          protein: { ...prevStats.protein, target: nutritionData.protein },
+          carbs: { ...prevStats.carbs, target: nutritionData.carbs },
+          fat: { ...prevStats.fat, target: nutritionData.fat },
+        }));
+      }
+      const savedCuisines = localStorage.getItem('userOnboardingData');
+      if (savedCuisines) {
+        const onboardingData = JSON.parse(savedCuisines);
+        if (onboardingData.preferredCuisines) {
+          setPreferredCuisines(onboardingData.preferredCuisines);
+        }
+      }
+      console.log("Preferred Cuisines from Local Storage:", preferredCuisines);
+    }
+  }, []);
 
   const [recentMeals] = useState([
     {
@@ -241,6 +267,21 @@ export default function NutriSnapDashboardPage() {
             </BrutalistCardDescription>
           </BrutalistCardHeader>
           <BrutalistCardContent>
+            {preferredCuisines.length > 0 && (
+              <div className="bg-purple-50 p-3 sm:p-4 nutrisnap-border-thin mb-4">
+                <h4 className="nutrisnap-subtitle text-xs mb-2">YOUR PREFERRED CUISINES:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {preferredCuisines.map((cuisine) => (
+                    <span
+                      key={cuisine}
+                      className="bg-purple-500 text-white px-2 py-1 nutrisnap-border-thin text-xs nutrisnap-subtitle"
+                    >
+                      {cuisine.toUpperCase()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-3 sm:space-y-4">
               {recommendedFoods.map((food) => (
                 <div
@@ -248,51 +289,41 @@ export default function NutriSnapDashboardPage() {
                   className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 bg-gray-50 nutrisnap-border-thin nutrisnap-hover"
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 nutrisnap-border flex items-center justify-center flex-shrink-0">
-                    <Square className="w-6 h-6 sm:w-8 sm:h-8 text-gray-600 fill-gray-600" />
+                    <img
+                      src={food.image}
+                      alt={food.name}
+                      className="w-full h-full object-cover rounded-sm"
+                      width={80}
+                      height={80}
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1">
                     <div className="nutrisnap-subtitle text-sm mb-1">{food.name}</div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
-                      <span className="nutrisnap-body text-gray-600">{food.calories} CAL</span>
-                      <span className="nutrisnap-body text-gray-600">{food.protein}G PROTEIN</span>
-                      <BrutalistBadge variant="secondary" className="text-[10px]">
-                        {food.cuisine}
-                      </BrutalistBadge>
+                    <div className="nutrisnap-body text-xs text-gray-600">
+                      {food.calories} CAL | {food.protein}G PROTEIN
                     </div>
-                    <div className="nutrisnap-body text-xs text-gray-500">{food.reason}</div>
+                    <div className="nutrisnap-caption text-xs text-gray-500 mt-1">{food.reason}</div>
                   </div>
-                  <div className="flex flex-col items-end space-y-2">
-                    <BrutalistBadge variant={food.confidence >= 90 ? "success" : "accent"} className="text-[10px]">
-                      {food.confidence}% MATCH
-                    </BrutalistBadge>
-                    <BrutalistButton variant="ghost" size="sm" className="hover:bg-lime-400 touch-target">
-                      <Plus className="w-4 h-4" />
-                    </BrutalistButton>
-                  </div>
+                  <BrutalistButton variant="outline" size="sm" className="touch-target">
+                    <Plus className="w-4 h-4 mr-1" />
+                    ADD
+                  </BrutalistButton>
                 </div>
               ))}
             </div>
           </BrutalistCardContent>
         </BrutalistCard>
 
-        {/* Recent AI Scans */}
+        {/* Recent Activity */}
         <BrutalistCard className="nutrisnap-shadow">
           <BrutalistCardHeader>
-            <div className="flex items-center justify-between">
-              <BrutalistCardTitle className="flex items-center text-lg sm:text-2xl">
-                <Clock className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-500" />
-                RECENT AI SCANS
-              </BrutalistCardTitle>
-              <Link href="/log">
-                <BrutalistButton
-                  variant="outline"
-                  size="sm"
-                  className="border-black text-black hover:bg-black hover:text-white touch-target"
-                >
-                  VIEW ALL
-                </BrutalistButton>
-              </Link>
-            </div>
+            <BrutalistCardTitle className="flex items-center text-lg sm:text-2xl">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-500" />
+              RECENT ACTIVITY
+            </BrutalistCardTitle>
+            <BrutalistCardDescription className="nutrisnap-subtitle text-xs">
+              YOUR LATEST AI-POWERED LOGS
+            </BrutalistCardDescription>
           </BrutalistCardHeader>
           <BrutalistCardContent>
             <div className="space-y-3 sm:space-y-4">
@@ -302,89 +333,33 @@ export default function NutriSnapDashboardPage() {
                   className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 bg-gray-50 nutrisnap-border-thin nutrisnap-hover"
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 nutrisnap-border flex items-center justify-center flex-shrink-0">
-                    <Square className="w-6 h-6 sm:w-8 sm:h-8 text-gray-600 fill-gray-600" />
+                    <img
+                      src={meal.image}
+                      alt={meal.name}
+                      className="w-full h-full object-cover rounded-sm"
+                      width={80}
+                      height={80}
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1">
                     <div className="nutrisnap-subtitle text-sm mb-1">{meal.name}</div>
-                    <div className="flex flex-wrap items-center space-x-3 sm:space-x-4 text-xs">
-                      <span className="nutrisnap-body text-gray-600">{meal.time}</span>
-                      <span className="nutrisnap-body text-gray-600">{meal.calories} CAL</span>
-                      <BrutalistBadge
-                        variant={meal.confidence >= 90 ? "success" : meal.confidence >= 70 ? "accent" : "destructive"}
-                        className="text-[10px]"
-                      >
-                        {meal.confidence}% AI CONF
-                      </BrutalistBadge>
+                    <div className="nutrisnap-body text-xs text-gray-600">
+                      {meal.calories} CAL | {meal.time}
+                    </div>
+                    <div className="nutrisnap-caption text-xs text-gray-500 mt-1">
+                      AI CONFIDENCE: {meal.confidence}%
                     </div>
                   </div>
-                  <BrutalistButton variant="ghost" size="sm" className="hover:bg-lime-400 touch-target">
-                    <Plus className="w-4 h-4" />
+                  <BrutalistButton variant="outline" size="sm" className="touch-target">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    VIEW
                   </BrutalistButton>
                 </div>
               ))}
             </div>
           </BrutalistCardContent>
         </BrutalistCard>
-
-        {/* Stats Grid - Enhanced */}
-        <div className="nutrisnap-grid-2 gap-4 sm:gap-6">
-          <BrutalistCard className="text-center nutrisnap-hover">
-            <BrutalistCardContent className="p-4 sm:p-8">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-lime-400 nutrisnap-border mx-auto mb-4 sm:mb-6 flex items-center justify-center">
-                <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
-              </div>
-              <div className="nutrisnap-title text-3xl sm:text-5xl mb-2 sm:mb-3">7</div>
-              <div className="nutrisnap-subtitle text-xs text-gray-600">DAY STREAK</div>
-            </BrutalistCardContent>
-          </BrutalistCard>
-
-          <BrutalistCard className="text-center nutrisnap-hover">
-            <BrutalistCardContent className="p-4 sm:p-8">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-500 nutrisnap-border mx-auto mb-4 sm:mb-6 flex items-center justify-center">
-                <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-              </div>
-              <div className="nutrisnap-title text-3xl sm:text-5xl mb-2 sm:mb-3">42</div>
-              <div className="nutrisnap-subtitle text-xs text-gray-600">AI SCANS</div>
-            </BrutalistCardContent>
-          </BrutalistCard>
-        </div>
-
-        {/* Weekly Activity Grid */}
-        <BrutalistCard className="nutrisnap-shadow">
-          <BrutalistCardHeader>
-            <BrutalistCardTitle className="flex items-center text-lg sm:text-2xl">
-              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-purple-500" />
-              THIS WEEK
-            </BrutalistCardTitle>
-          </BrutalistCardHeader>
-          <BrutalistCardContent>
-            <div className="grid grid-cols-7 gap-2 sm:gap-3">
-              {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((day, index) => (
-                <div key={day} className="text-center">
-                  <div className="nutrisnap-subtitle text-[10px] text-gray-600 mb-2 sm:mb-3">{day}</div>
-                  <div
-                    className={`w-10 h-10 sm:w-12 sm:h-12 nutrisnap-border flex items-center justify-center text-xs font-black nutrisnap-hover touch-target ${
-                      index < 4
-                        ? "bg-lime-400 text-black"
-                        : index === 4
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-200 text-gray-400"
-                    }`}
-                  >
-                    {index < 4 ? "✓" : index === 4 ? "•" : ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 sm:mt-8 text-center p-3 sm:p-4 bg-lime-50 nutrisnap-border-thin">
-              <div className="nutrisnap-body text-sm text-gray-700">
-                EXCELLENT! AI TRACKED 5 OUT OF 7 DAYS THIS WEEK
-              </div>
-            </div>
-          </BrutalistCardContent>
-        </BrutalistCard>
       </div>
-
       <BrutalistBottomNavigation />
     </div>
   )

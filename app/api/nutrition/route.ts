@@ -49,3 +49,45 @@ export async function GET(request: NextRequest) {
 
 // In a real implementation, this would call Edamam API
 // const response = await fetch(`https://api.edamam
+
+const API_KEY = process.env.USDA_API_KEY;
+
+export async function POST(req: Request) {
+  const { foodName } = await req.json();
+
+  const searchRes = await fetch(
+    `https://api.nal.usda.gov/fdc/v1/foods/search?query=${foodName}&pageSize=1&api_key=${API_KEY}`
+  );
+
+  const searchData = await searchRes.json();
+  const foodItem = searchData.foods?.[0];
+
+  if (!foodItem) {
+    return NextResponse.json({ error: 'Food not found' }, { status: 404 });
+  }
+
+  const foodId = foodItem.fdcId;
+
+  const detailRes = await fetch(
+    `https://api.nal.usda.gov/fdc/v1/food/${foodId}?api_key=${API_KEY}`
+  );
+  const detailData = await detailRes.json();
+
+  const nutrients: { [key: string]: any } = {};
+  for (const nutrient of detailData.foodNutrients) {
+    const name = nutrient.nutrientName.toLowerCase();
+    if (name.includes('energy')) nutrients.calories = nutrient.value;
+    else if (name.includes('protein')) nutrients.protein = nutrient.value;
+    else if (name.includes('carbohydrate')) nutrients.carbs = nutrient.value;
+    else if (name.includes('total lipid')) nutrients.fat = nutrient.value;
+    else if (name.includes('fiber')) nutrients.fiber = nutrient.value;
+  }
+
+  return NextResponse.json({
+    foodId,
+    name: detailData.description,
+    nutritionPer100g: nutrients,
+    measures: detailData.householdServingFullText || '100g',
+    image: '/placeholder.jpg' // USDA doesn't provide image links
+  });
+}

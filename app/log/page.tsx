@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BrutalistButton } from "@/components/ui/brutalist-button"
 import {
   BrutalistCard,
@@ -14,12 +14,13 @@ import { BrutalistInput } from "@/components/ui/brutalist-input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Search, Filter, Clock, Trash2, Edit, Plus, Square, Zap, Target } from "lucide-react"
 import { BrutalistBottomNavigation } from "@/components/brutalist-bottom-nav"
+import { FoodSearchResultsList } from "@/components/ui/FoodSearchResultsList"
 
 export default function BrutalistLogPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
 
-  const [foodLog] = useState([
+  const [foodLog, setFoodLog] = useState([
     {
       id: 1,
       name: "AVOCADO TOAST + EGGS",
@@ -99,6 +100,103 @@ export default function BrutalistLogPage() {
   const totalCarbs = filteredLog.reduce((sum, item) => sum + item.carbs, 0)
   const totalFat = filteredLog.reduce((sum, item) => sum + item.fat, 0)
 
+  // New states for manual logging
+  const [showManualAddForm, setShowManualAddForm] = useState(false);
+  const [manualSearchQuery, setManualSearchQuery] = useState("");
+  const [foodSearchResults, setFoodSearchResults] = useState<any[]>([]);
+  const [selectedFoodDetails, setSelectedFoodDetails] = useState<any | null>(null);
+  const [isSearchingManual, setIsSearchingManual] = useState(false);
+  const [isLoggingFood, setIsLoggingFood] = useState(false);
+
+  // Function to perform the search
+  const performSearch = async (query: string) => {
+    if (query.length > 2) { // Only search if query is long enough
+      setIsSearchingManual(true);
+      try {
+        const res = await fetch(`/api/nutrition/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        console.log("USDA Search Results:", data);
+        setFoodSearchResults(data);
+      } catch (error) {
+        console.error("Error searching food:", error);
+        setFoodSearchResults([]);
+      } finally {
+        setIsSearchingManual(false);
+      }
+    } else {
+      setFoodSearchResults([]);
+      setSelectedFoodDetails(null); // Clear details when search query is too short
+    }
+  };
+
+  // New useEffect for debounced manual food search
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      performSearch(manualSearchQuery);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [manualSearchQuery]);
+
+  const fetchFoodDetails = async (foodId: string) => {
+    try {
+      const res = await fetch(`/api/nutrition/detail?fdcId=${foodId}`);
+      const data = await res.json();
+      setSelectedFoodDetails(data);
+    } catch (error) {
+      console.error("Error fetching food details:", error);
+      setSelectedFoodDetails(null);
+    }
+  };
+
+  const handleLogFoodEntry = async () => {
+    if (!selectedFoodDetails) return;
+
+    setIsLoggingFood(true);
+    try {
+      const logEntry = {
+        foodId: selectedFoodDetails.fdcId,
+        name: selectedFoodDetails.name,
+        quantity: 1, // Default to 1 for simplicity, can be expanded
+        servingSize: selectedFoodDetails.servingSizeUnit ? `${selectedFoodDetails.servingSize}${selectedFoodDetails.servingUnit}` : '100g',
+        date: new Date().toISOString().split("T")[0], // Today's date
+        nutrition: selectedFoodDetails.nutrition,
+      };
+
+      const res = await fetch("/api/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(logEntry),
+      });
+
+      if (res.ok) {
+        // Add to local food log state and reset form
+        setFoodLog((prevLog) => [...prevLog, {
+            id: Date.now(), // Simple unique ID
+            name: logEntry.name,
+            time: new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false}),
+            meal: "MANUAL", // Or allow user to select meal type
+            calories: logEntry.nutrition.calories || 0,
+            protein: logEntry.nutrition.protein || 0,
+            carbs: logEntry.nutrition.carbs || 0,
+            fat: logEntry.nutrition.fat || 0,
+            image: "/placeholder.svg?height=60&width=60", // Placeholder image
+            confidence: 100, // Manual entry is 100% confident
+        }]);
+        setManualSearchQuery("");
+        setFoodSearchResults([]);
+        setSelectedFoodDetails(null);
+        setShowManualAddForm(false);
+      } else {
+        console.error("Failed to log food entry:", await res.json());
+      }
+    } catch (error) {
+      console.error("Error logging food entry:", error);
+    } finally {
+      setIsLoggingFood(false);
+    }
+  };
+
   return (
     <div className="min-h-screen dashboard-simple-bg pb-20">
       {/* Brutalist Header */}
@@ -117,6 +215,7 @@ export default function BrutalistLogPage() {
             <BrutalistButton
               size="sm"
               className="bg-lime-400 text-black hover:bg-lime-300 nutrisnap-shadow touch-target"
+              onClick={() => setShowManualAddForm(!showManualAddForm)}
             >
               <Plus className="w-4 h-4 mr-2" />
               ADD FOOD
@@ -132,8 +231,21 @@ export default function BrutalistLogPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-white text-black touch-target"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    performSearch(searchQuery);
+                  }
+                }}
               />
             </div>
+            <BrutalistButton
+              variant="outline"
+              size="sm"
+              className="border-white text-white hover:bg-white hover:text-black touch-target"
+              onClick={() => performSearch(searchQuery)}
+            >
+              <Search className="w-4 h-4" />
+            </BrutalistButton>
             <BrutalistButton
               variant="outline"
               size="sm"
@@ -144,6 +256,69 @@ export default function BrutalistLogPage() {
           </div>
         </div>
       </header>
+
+      {/* Manual Food Logging Section - NEW ADDITION */}
+      {showManualAddForm && (
+        <div className="container mx-auto mobile-padding py-4 sm:py-6">
+          <BrutalistCard className="nutrisnap-shadow mb-6">
+            <BrutalistCardHeader>
+              <BrutalistCardTitle>MANUAL FOOD ENTRY</BrutalistCardTitle>
+              <BrutalistCardDescription>SEARCH AND ADD FOOD ITEMS</BrutalistCardDescription>
+            </BrutalistCardHeader>
+            <BrutalistCardContent className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <BrutalistInput
+                  placeholder="TYPE FOOD NAME TO SEARCH..."
+                  value={manualSearchQuery}
+                  onChange={(e) => setManualSearchQuery(e.target.value)}
+                  className="pl-10 bg-white text-black touch-target"
+                />
+                {isSearchingManual && <p className="text-sm text-gray-500 mt-2">Searching...</p>}
+              </div>
+
+              {console.log("Frontend foodSearchResults:", foodSearchResults)}
+              {console.log("Frontend selectedFoodDetails:", selectedFoodDetails)}
+
+              {foodSearchResults.length > 0 && !selectedFoodDetails && (
+                <div style={{ border: '5px solid green', background: 'yellow', padding: '10px' }}>
+                  <FoodSearchResultsList results={foodSearchResults} onSelectFood={fetchFoodDetails} />
+                </div>
+              )}
+
+              {selectedFoodDetails && (
+                <BrutalistCard className="bg-green-500 text-white mt-4">
+                  <BrutalistCardHeader>
+                    <BrutalistCardTitle className="text-white">
+                      {selectedFoodDetails.name.toUpperCase()}
+                    </BrutalistCardTitle>
+                    <BrutalistCardDescription className="text-green-100">
+                      NUTRITION PER {selectedFoodDetails.servingSize} {selectedFoodDetails.servingUnit.toUpperCase()}
+                    </BrutalistCardDescription>
+                  </BrutalistCardHeader>
+                  <BrutalistCardContent>
+                    <div className="nutrisnap-grid-2 gap-4">
+                      {Object.entries(selectedFoodDetails.nutrition).map(([key, value]) => (
+                        <div key={key} className="bg-green-600 p-3 nutrisnap-border text-center">
+                          <div className="text-2xl font-black">{value}{key === 'calories' ? '' : 'G'}</div>
+                          <div className="nutrisnap-subtitle text-xs">{key.toUpperCase()}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <BrutalistButton
+                      onClick={handleLogFoodEntry}
+                      className="w-full mt-4 bg-lime-400 text-black hover:bg-lime-300"
+                      disabled={isLoggingFood}
+                    >
+                      {isLoggingFood ? 'LOGGING...' : 'LOG FOOD'}
+                    </BrutalistButton>
+                  </BrutalistCardContent>
+                </BrutalistCard>
+              )}
+            </BrutalistCardContent>
+          </BrutalistCard>
+        </div>
+      )}
 
       <div className="container mx-auto mobile-padding py-4 sm:py-6">
         <Tabs defaultValue="today" className="space-y-6">

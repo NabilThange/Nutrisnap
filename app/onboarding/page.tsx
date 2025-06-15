@@ -28,16 +28,107 @@ export default function NutriSnapOnboardingPage() {
     preferredCuisines: [] as string[],
   })
 
+  const [calculatedNutrition, setCalculatedNutrition] = useState({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  });
+
   const totalSteps = 5
 
   useEffect(() => {
     setIsLoaded(true)
   }, [])
 
+  useEffect(() => {
+    const { age, gender, height, weight, activityLevel, goal } = formData;
+
+    const numAge = parseFloat(age);
+    const numHeight = parseFloat(height);
+    const numWeight = parseFloat(weight);
+
+    if (numAge > 0 && numHeight > 0 && numWeight > 0 && gender && activityLevel && goal) {
+      let bmr: number;
+
+      // Mifflin-St Jeor Equation for BMR
+      if (gender === 'male') {
+        bmr = (10 * numWeight) + (6.25 * numHeight) - (5 * numAge) + 5;
+      } else if (gender === 'female') {
+        bmr = (10 * numWeight) + (6.25 * numHeight) - (5 * numAge) - 161;
+      } else {
+        bmr = 0; // Handle other/prefer-not-to-say by setting to 0 or an average
+      }
+
+      let tdee: number = bmr;
+
+      // Activity Level Multipliers
+      switch (activityLevel) {
+        case 'sedentary':
+          tdee *= 1.2;
+          break;
+        case 'lightly-active':
+          tdee *= 1.375;
+          break;
+        case 'moderately-active':
+          tdee *= 1.55;
+          break;
+        case 'very-active':
+          tdee *= 1.725;
+          break;
+        default:
+          break;
+      }
+
+      let totalCalories = tdee;
+
+      // Goal-based Adjustments
+      switch (goal) {
+        case 'lose-weight':
+          totalCalories -= 500; // Aim for ~1lb/week loss
+          break;
+        case 'gain-weight':
+          totalCalories += 500; // Aim for ~1lb/week gain
+          break;
+        case 'maintain-weight':
+        case 'general-health':
+        default:
+          break;
+      }
+
+      // Ensure calories don't go below a reasonable minimum
+      totalCalories = Math.max(1200, totalCalories); 
+
+      // Macronutrient Distribution (Example: 30% Protein, 40% Carbs, 30% Fat)
+      const proteinCalories = totalCalories * 0.30;
+      const carbCalories = totalCalories * 0.40;
+      const fatCalories = totalCalories * 0.30;
+
+      const proteinGrams = Math.round(proteinCalories / 4); // 4 kcal/g for protein
+      const carbGrams = Math.round(carbCalories / 4);     // 4 kcal/g for carbs
+      const fatGrams = Math.round(fatCalories / 9);         // 9 kcal/g for fat
+
+      setCalculatedNutrition({
+        calories: Math.round(totalCalories),
+        protein: proteinGrams,
+        carbs: carbGrams,
+        fat: fatGrams,
+      });
+    } else {
+      setCalculatedNutrition({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+    }
+  }, [formData]);
+
   const handleNext = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1)
     } else {
+      // Save calculated nutrition to local storage before redirecting to dashboard
+      if (calculatedNutrition.calories > 0) {
+        localStorage.setItem('userNutritionData', JSON.stringify(calculatedNutrition));
+      }
+      // Save all form data (including preferred cuisines) to local storage
+      localStorage.setItem('userOnboardingData', JSON.stringify(formData));
       window.location.href = "/dashboard"
     }
   }
@@ -386,19 +477,27 @@ export default function NutriSnapOnboardingPage() {
 
                 <div className="nutrisnap-grid-2 gap-3 sm:gap-4 mb-4">
                   <div className="macro-calories p-3 sm:p-4 nutrisnap-border text-center">
-                    <div className="nutrisnap-title text-xl sm:text-2xl text-white">2,150</div>
+                    <div className="nutrisnap-title text-2xl sm:text-3xl text-white">
+                      {calculatedNutrition.calories.toLocaleString()}
+                    </div>
                     <div className="nutrisnap-subtitle text-xs text-white">DAILY CALORIES</div>
                   </div>
                   <div className="macro-protein p-3 sm:p-4 nutrisnap-border text-center">
-                    <div className="nutrisnap-title text-xl sm:text-2xl text-white">120G</div>
-                    <div className="nutrisnap-subtitle text-xs text-white">PROTEIN</div>
+                    <div className="nutrisnap-title text-2xl sm:text-3xl text-black">
+                      {calculatedNutrition.protein}G
+                    </div>
+                    <div className="nutrisnap-subtitle text-xs text-black">PROTEIN</div>
                   </div>
                   <div className="macro-carbs p-3 sm:p-4 nutrisnap-border text-center">
-                    <div className="nutrisnap-title text-xl sm:text-2xl text-black">270G</div>
+                    <div className="nutrisnap-title text-2xl sm:text-3xl text-black">
+                      {calculatedNutrition.carbs}G
+                    </div>
                     <div className="nutrisnap-subtitle text-xs text-black">CARBS</div>
                   </div>
                   <div className="macro-fat p-3 sm:p-4 nutrisnap-border text-center">
-                    <div className="nutrisnap-title text-xl sm:text-2xl text-white">72G</div>
+                    <div className="nutrisnap-title text-2xl sm:text-3xl text-white">
+                      {calculatedNutrition.fat}G
+                    </div>
                     <div className="nutrisnap-subtitle text-xs text-white">FAT</div>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BrutalistButton } from "@/components/ui/brutalist-button"
 import {
   BrutalistCard,
@@ -16,16 +16,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BrutalistBadge } from "@/components/ui/brutalist-badge"
 import { User, Settings, Bell, Shield, HelpCircle, LogOut, Edit, Target, Award } from "lucide-react"
 import { BrutalistBottomNavigation } from "@/components/brutalist-bottom-nav"
+import { BrutalistLoading } from "@/components/brutalist-loading"
+import { supabase } from "@/lib/supabase"
+import Link from "next/link"
 
 export default function BrutalistProfilePage() {
   const [profile, setProfile] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    age: 28,
-    height: 175,
-    weight: 70,
-    activityLevel: "moderately-active",
+    firstName: "",
+    lastName: "",
+    email: "",
+    age: 0,
+    height: 0,
+    weight: 0,
+    activityLevel: "sedentary",
     goal: "maintain-weight",
   })
 
@@ -36,12 +39,74 @@ export default function BrutalistProfilePage() {
     marketingEmails: false,
   })
 
-  const [stats] = useState({
-    daysActive: 28,
-    mealsLogged: 142,
-    streakDays: 7,
-    accuracy: 94,
+  const [stats, setStats] = useState({
+    daysActive: 0,
+    mealsLogged: 0,
+    streakDays: 0,
+    accuracy: 0,
   })
+
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const checkUserSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setIsLoggedIn(true);
+          const fetchUserData = async () => {
+            try {
+              const res = await fetch("/api/user/me")
+              if (!res.ok) {
+                throw new Error(`Failed to fetch user data: ${res.statusText}`)
+              }
+              const data = await res.json()
+              setProfile(data)
+              setStats({
+                daysActive: 28,
+                mealsLogged: 142,
+                streakDays: 7,
+                accuracy: 94,
+              });
+            } catch (err: any) {
+              console.error("Error fetching user data:", err)
+              setError(err.message || "An unknown error occurred")
+            } finally {
+              setIsLoading(false)
+            }
+          }
+          fetchUserData();
+        } else {
+          setIsLoggedIn(false);
+          setProfile({
+            firstName: "Guest",
+            lastName: "User",
+            email: "guest@example.com",
+            age: 25,
+            height: 170,
+            weight: 70,
+            activityLevel: "sedentary",
+            goal: "maintain-weight",
+          });
+          setStats({
+            daysActive: 0,
+            mealsLogged: 0,
+            streakDays: 0,
+            accuracy: 0,
+          });
+          setIsLoading(false);
+        }
+      } catch (err: any) {
+        console.error("Error checking session:", err);
+        setError(err.message || "Failed to check user session.");
+        setIsLoading(false);
+      }
+    };
+
+    checkUserSession();
+  }, []);
 
   const handleProfileUpdate = (field: string, value: string | number) => {
     setProfile((prev) => ({ ...prev, [field]: value }))
@@ -49,6 +114,53 @@ export default function BrutalistProfilePage() {
 
   const handleNotificationToggle = (setting: string) => {
     setNotifications((prev) => ({ ...prev, [setting]: !prev[setting as keyof typeof prev] }))
+  }
+
+  const handleSaveChanges = async () => {
+    if (!isLoggedIn) {
+      alert("Please sign in to save changes.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/user/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profile),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update profile');
+      }
+      alert('Profile updated successfully!');
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading || isLoggedIn === null) {
+    return (
+      <div className="min-h-screen brutalist-bg flex items-center justify-center">
+        <BrutalistLoading size="lg" text="LOADING PROFILE..." />
+      </div>
+    )
+  }
+
+  if (error && isLoggedIn) {
+    return (
+      <div className="min-h-screen brutalist-bg flex items-center justify-center">
+        <BrutalistCard className="w-full max-w-md mx-4 text-center p-8">
+          <BrutalistCardTitle>ERROR</BrutalistCardTitle>
+          <BrutalistCardDescription className="text-red-500">{error}</BrutalistCardDescription>
+          <p className="mt-4">Please try again later.</p>
+        </BrutalistCard>
+      </div>
+    )
   }
 
   return (
@@ -79,6 +191,7 @@ export default function BrutalistProfilePage() {
               variant="outline"
               size="sm"
               className="border-white text-white hover:bg-white hover:text-black touch-target"
+              disabled={!isLoggedIn}
             >
               <Edit className="w-4 h-4 mr-2" />
               EDIT
@@ -149,6 +262,7 @@ export default function BrutalistProfilePage() {
                   value={profile.firstName}
                   onChange={(e) => handleProfileUpdate("firstName", e.target.value)}
                   className="touch-target"
+                  readOnly={!isLoggedIn}
                 />
               </div>
               <div className="space-y-2">
@@ -160,6 +274,7 @@ export default function BrutalistProfilePage() {
                   value={profile.lastName}
                   onChange={(e) => handleProfileUpdate("lastName", e.target.value)}
                   className="touch-target"
+                  readOnly={!isLoggedIn}
                 />
               </div>
             </div>
@@ -172,8 +287,8 @@ export default function BrutalistProfilePage() {
                 id="email"
                 type="email"
                 value={profile.email}
-                onChange={(e) => handleProfileUpdate("email", e.target.value)}
-                className="touch-target"
+                readOnly
+                className="touch-target bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
               />
             </div>
 
@@ -188,6 +303,7 @@ export default function BrutalistProfilePage() {
                   value={profile.age}
                   onChange={(e) => handleProfileUpdate("age", Number.parseInt(e.target.value))}
                   className="touch-target"
+                  readOnly={!isLoggedIn}
                 />
               </div>
               <div className="space-y-2">
@@ -200,6 +316,7 @@ export default function BrutalistProfilePage() {
                   value={profile.height}
                   onChange={(e) => handleProfileUpdate("height", Number.parseInt(e.target.value))}
                   className="touch-target"
+                  readOnly={!isLoggedIn}
                 />
               </div>
               <div className="space-y-2">
@@ -212,177 +329,203 @@ export default function BrutalistProfilePage() {
                   value={profile.weight}
                   onChange={(e) => handleProfileUpdate("weight", Number.parseInt(e.target.value))}
                   className="touch-target"
+                  readOnly={!isLoggedIn}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="activityLevel" className="nutrisnap-subtitle text-xs">
+                ACTIVITY LEVEL
+              </Label>
+              <Select
+                value={profile.activityLevel}
+                onValueChange={(value) => handleProfileUpdate("activityLevel", value)}
+                disabled={!isLoggedIn}
+              >
+                <SelectTrigger className="w-full brutalist-input touch-target">
+                  <SelectValue placeholder="SELECT ACTIVITY LEVEL" />
+                </SelectTrigger>
+                <SelectContent className="brutalist-card brutalist-shadow">
+                  <SelectItem value="sedentary">SEDENTARY (LITTLE TO NO EXERCISE)</SelectItem>
+                  <SelectItem value="lightly-active">LIGHTLY ACTIVE (LIGHT EXERCISE/SPORTS 1-3 DAYS/WEEK)</SelectItem>
+                  <SelectItem value="moderately-active">MODERATELY ACTIVE (MODERATE EXERCISE/SPORTS 3-5 DAYS/WEEK)</SelectItem>
+                  <SelectItem value="very-active">VERY ACTIVE (HARD EXERCISE/SPORTS 6-7 DAYS/WEEK)</SelectItem>
+                  <SelectItem value="extra-active">EXTRA ACTIVE (VERY HARD EXERCISE/PHYSICAL JOB)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="goal" className="nutrisnap-subtitle text-xs">GOAL</Label>
+              <Select
+                value={profile.goal}
+                onValueChange={(value) => handleProfileUpdate("goal", value)}
+                disabled={!isLoggedIn}
+              >
+                <SelectTrigger className="w-full brutalist-input touch-target">
+                  <SelectValue placeholder="SELECT YOUR GOAL" />
+                </SelectTrigger>
+                <SelectContent className="brutalist-card brutalist-shadow">
+                  <SelectItem value="lose-weight">LOSE WEIGHT</SelectItem>
+                  <SelectItem value="maintain-weight">MAINTAIN WEIGHT</SelectItem>
+                  <SelectItem value="gain-weight">GAIN WEIGHT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <BrutalistButton
+              onClick={handleSaveChanges}
+              className="w-full bg-blue-500 text-white hover:bg-blue-400 nutrisnap-shadow touch-target"
+              disabled={isLoading || !isLoggedIn}
+            >
+              SAVE CHANGES
+            </BrutalistButton>
+          </BrutalistCardContent>
+        </BrutalistCard>
+
+        {/* Notification Settings */}
+        <BrutalistCard className="nutrisnap-shadow">
+          <BrutalistCardHeader>
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-lime-500 nutrisnap-border flex items-center justify-center">
+                <Bell className="w-6 h-6 text-black" />
+              </div>
+              <BrutalistCardTitle className="text-xl sm:text-2xl">NOTIFICATIONS</BrutalistCardTitle>
+            </div>
+          </BrutalistCardHeader>
+          <BrutalistCardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="mealReminders" className="nutrisnap-subtitle">
+                MEAL REMINDERS
+              </Label>
+              <Switch
+                id="mealReminders"
+                checked={notifications.mealReminders}
+                onCheckedChange={() => handleNotificationToggle("mealReminders")}
+                className="touch-target"
+                disabled={!isLoggedIn}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="goalAchievements" className="nutrisnap-subtitle">
+                GOAL ACHIEVEMENTS
+              </Label>
+              <Switch
+                id="goalAchievements"
+                checked={notifications.goalAchievements}
+                onCheckedChange={() => handleNotificationToggle("goalAchievements")}
+                className="touch-target"
+                disabled={!isLoggedIn}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="weeklyReports" className="nutrisnap-subtitle">
+                WEEKLY REPORTS
+              </Label>
+              <Switch
+                id="weeklyReports"
+                checked={notifications.weeklyReports}
+                onCheckedChange={() => handleNotificationToggle("weeklyReports")}
+                className="touch-target"
+                disabled={!isLoggedIn}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="marketingEmails" className="nutrisnap-subtitle">
+                MARKETING EMAILS
+              </Label>
+              <Switch
+                id="marketingEmails"
+                checked={notifications.marketingEmails}
+                onCheckedChange={() => handleNotificationToggle("marketingEmails")}
+                className="touch-target"
+                disabled={!isLoggedIn}
+              />
             </div>
           </BrutalistCardContent>
         </BrutalistCard>
 
-        {/* Goals & Preferences */}
+        {/* General Settings */}
         <BrutalistCard className="nutrisnap-shadow">
           <BrutalistCardHeader>
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-orange-500 nutrisnap-border flex items-center justify-center">
-                <Target className="w-6 h-6 text-white" />
+                <Settings className="w-6 h-6 text-white" />
               </div>
-              <BrutalistCardTitle className="text-xl sm:text-2xl">GOALS & PREFERENCES</BrutalistCardTitle>
+              <BrutalistCardTitle className="text-xl sm:text-2xl">GENERAL SETTINGS</BrutalistCardTitle>
             </div>
           </BrutalistCardHeader>
           <BrutalistCardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="nutrisnap-subtitle text-xs">ACTIVITY LEVEL</Label>
-              <Select
-                value={profile.activityLevel}
-                onValueChange={(value) => handleProfileUpdate("activityLevel", value)}
-              >
-                <SelectTrigger className="nutrisnap-border nutrisnap-hover h-12 font-bold uppercase touch-target">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sedentary">SEDENTARY</SelectItem>
-                  <SelectItem value="lightly-active">LIGHTLY ACTIVE</SelectItem>
-                  <SelectItem value="moderately-active">MODERATELY ACTIVE</SelectItem>
-                  <SelectItem value="very-active">VERY ACTIVE</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="nutrisnap-subtitle text-xs">PRIMARY GOAL</Label>
-              <Select value={profile.goal} onValueChange={(value) => handleProfileUpdate("goal", value)}>
-                <SelectTrigger className="nutrisnap-border nutrisnap-hover h-12 font-bold uppercase touch-target">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lose-weight">LOSE WEIGHT</SelectItem>
-                  <SelectItem value="maintain-weight">MAINTAIN WEIGHT</SelectItem>
-                  <SelectItem value="gain-weight">GAIN WEIGHT</SelectItem>
-                  <SelectItem value="general-health">GENERAL HEALTH</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <BrutalistButton
+              className="w-full bg-gray-200 text-black hover:bg-gray-100 nutrisnap-shadow touch-target"
+              disabled={!isLoggedIn}
+            >
+              CHANGE PASSWORD
+            </BrutalistButton>
+            <BrutalistButton
+              className="w-full bg-gray-200 text-black hover:bg-gray-100 nutrisnap-shadow touch-target"
+              disabled={!isLoggedIn}
+            >
+              MANAGE PRIVACY
+            </BrutalistButton>
+            <BrutalistButton
+              className="w-full bg-gray-200 text-black hover:bg-gray-100 nutrisnap-shadow touch-target"
+              disabled={!isLoggedIn}
+            >
+              DOWNLOAD MY DATA
+            </BrutalistButton>
           </BrutalistCardContent>
         </BrutalistCard>
 
-        {/* Notifications */}
-        <BrutalistCard className="nutrisnap-shadow">
-          <BrutalistCardHeader>
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-yellow-400 nutrisnap-border flex items-center justify-center">
-                <Bell className="w-6 h-6 text-black" />
-              </div>
-              <div>
-                <BrutalistCardTitle className="text-xl sm:text-2xl">NOTIFICATIONS</BrutalistCardTitle>
-                <BrutalistCardDescription className="nutrisnap-subtitle text-xs">
-                  MANAGE YOUR NOTIFICATION PREFERENCES
-                </BrutalistCardDescription>
-              </div>
-            </div>
-          </BrutalistCardHeader>
-          <BrutalistCardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 nutrisnap-border-thin">
-              <div>
-                <div className="nutrisnap-subtitle text-sm">MEAL REMINDERS</div>
-                <div className="nutrisnap-body text-xs text-gray-600">GET REMINDED TO LOG YOUR MEALS</div>
-              </div>
-              <Switch
-                checked={notifications.mealReminders}
-                onCheckedChange={() => handleNotificationToggle("mealReminders")}
-                className="touch-target"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 nutrisnap-border-thin">
-              <div>
-                <div className="nutrisnap-subtitle text-sm">GOAL ACHIEVEMENTS</div>
-                <div className="nutrisnap-body text-xs text-gray-600">CELEBRATE WHEN YOU REACH MILESTONES</div>
-              </div>
-              <Switch
-                checked={notifications.goalAchievements}
-                onCheckedChange={() => handleNotificationToggle("goalAchievements")}
-                className="touch-target"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 nutrisnap-border-thin">
-              <div>
-                <div className="nutrisnap-subtitle text-sm">WEEKLY REPORTS</div>
-                <div className="nutrisnap-body text-xs text-gray-600">GET WEEKLY NUTRITION SUMMARIES</div>
-              </div>
-              <Switch
-                checked={notifications.weeklyReports}
-                onCheckedChange={() => handleNotificationToggle("weeklyReports")}
-                className="touch-target"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 nutrisnap-border-thin">
-              <div>
-                <div className="nutrisnap-subtitle text-sm">MARKETING EMAILS</div>
-                <div className="nutrisnap-body text-xs text-gray-600">RECEIVE TIPS AND PRODUCT UPDATES</div>
-              </div>
-              <Switch
-                checked={notifications.marketingEmails}
-                onCheckedChange={() => handleNotificationToggle("marketingEmails")}
-                className="touch-target"
-              />
-            </div>
-          </BrutalistCardContent>
-        </BrutalistCard>
-
-        {/* Account Actions */}
+        {/* Support & Legal */}
         <BrutalistCard className="nutrisnap-shadow">
           <BrutalistCardHeader>
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-red-500 nutrisnap-border flex items-center justify-center">
-                <Settings className="w-6 h-6 text-white" />
+                <HelpCircle className="w-6 h-6 text-white" />
               </div>
-              <BrutalistCardTitle className="text-xl sm:text-2xl">ACCOUNT</BrutalistCardTitle>
+              <BrutalistCardTitle className="text-xl sm:text-2xl">SUPPORT & LEGAL</BrutalistCardTitle>
             </div>
           </BrutalistCardHeader>
-          <BrutalistCardContent className="space-y-3">
-            <BrutalistButton
-              variant="outline"
-              className="w-full justify-start border-black text-black hover:bg-black hover:text-white touch-target"
-            >
-              <Shield className="w-4 h-4 mr-3" />
-              PRIVACY & SECURITY
-            </BrutalistButton>
-
-            <BrutalistButton
-              variant="outline"
-              className="w-full justify-start border-black text-black hover:bg-black hover:text-white touch-target"
-            >
-              <HelpCircle className="w-4 h-4 mr-3" />
-              HELP & SUPPORT
-            </BrutalistButton>
-
-            <div className="w-full border-t-2 border-black my-4"></div>
-
-            <BrutalistButton
-              variant="outline"
-              className="w-full justify-start border-red-500 text-red-600 hover:bg-red-500 hover:text-white touch-target"
-            >
-              <LogOut className="w-4 h-4 mr-3" />
-              SIGN OUT
-            </BrutalistButton>
+          <BrutalistCardContent className="space-y-4">
+            <Link href="/support" className="block brutalist-button w-full brutalist-shadow hover:bg-gray-100 text-left pl-4 py-3">
+              GET HELP
+            </Link>
+            <Link href="/terms" className="block brutalist-button w-full brutalist-shadow hover:bg-gray-100 text-left pl-4 py-3">
+              TERMS OF SERVICE
+            </Link>
+            <Link href="/privacy" className="block brutalist-button w-full brutalist-shadow hover:bg-gray-100 text-left pl-4 py-3">
+              PRIVACY POLICY
+            </Link>
           </BrutalistCardContent>
         </BrutalistCard>
 
-        {/* Save Changes */}
-        <div className="flex gap-4">
-          <BrutalistButton
-            variant="outline"
-            className="flex-1 border-black text-black hover:bg-black hover:text-white touch-target"
-          >
-            CANCEL
-          </BrutalistButton>
-          <BrutalistButton className="flex-1 bg-lime-400 text-black hover:bg-lime-300 nutrisnap-shadow touch-target">
-            SAVE CHANGES
-          </BrutalistButton>
-        </div>
+        {/* Logout */}
+        <BrutalistCard className="nutrisnap-shadow">
+          <BrutalistCardHeader>
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-purple-500 nutrisnap-border flex items-center justify-center">
+                <LogOut className="w-6 h-6 text-white" />
+              </div>
+              <BrutalistCardTitle className="text-xl sm:text-2xl">ACCOUNT ACTIONS</BrutalistCardTitle>
+            </div>
+          </BrutalistCardHeader>
+          <BrutalistCardContent className="space-y-4">
+            <BrutalistButton
+              onClick={async () => {
+                await supabase.auth.signOut();
+                alert("Logged out successfully!");
+                window.location.href = "/";
+              }}
+              className="w-full bg-red-500 text-white hover:bg-red-400 nutrisnap-shadow touch-target"
+              disabled={!isLoggedIn}
+            >
+              LOG OUT
+            </BrutalistButton>
+          </BrutalistCardContent>
+        </BrutalistCard>
       </div>
-
       <BrutalistBottomNavigation />
     </div>
   )
